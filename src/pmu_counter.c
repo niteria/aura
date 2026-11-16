@@ -110,3 +110,21 @@ int pmu_read_boot_record(u8 *counts, u8 *error_stage)
     *error_stage = record[1];
     return 0;
 }
+
+/*
+ * TEST (J813 S2R bring-up): a byte in the PMU's scratch that survives the reset after a failed
+ * wake, at 0x830e next to the Linux sleep driver's notes (0x8308..0x830c).
+ */
+void pmu_s2r_mark(u8 val)
+{
+    char path[64];
+    u8 addr;
+    u16 scrpad;
+    if (pmu_find_scratchpad(path, sizeof(path), &addr, &scrpad))
+        return;
+    spmi_dev_t *spmi = spmi_init(path);
+    if (!spmi)
+        return;
+    spmi_ext_write_long(spmi, addr, 0x830e, &val, 1);
+    spmi_shutdown(spmi);
+}

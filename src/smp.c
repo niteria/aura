@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT AND GPL-2.0-only */
 
 #include "smp.h"
+#include "pmu_counter.h"
 #include "adt.h"
 #include "aic.h"
 #include "aic_regs.h"
@@ -563,6 +564,7 @@ void smp_s2r_return_to_os(void)
      */
     dockchannel_uart_try_puts(armed ? "aura: S2R wake, resuming the OS"
                                     : "aura: S2R reset not armed, rebooting");
+    pmu_s2r_mark(armed ? 0xa1 : 0xa0); /* TEST */
     if (!armed)
         reboot();
 
