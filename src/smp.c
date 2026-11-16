@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: MIT AND GPL-2.0-only */
 
 #include "smp.h"
-#include "pmu_counter.h"
 #include "adt.h"
 #include "aic.h"
 #include "aic_regs.h"
@@ -10,6 +9,7 @@
 #include "malloc.h"
 #include "memory.h"
 #include "pmgr.h"
+#include "pmu_counter.h"
 #include "soc.h"
 #include "string.h"
 #include "types.h"
@@ -533,6 +533,7 @@ u64 smp_s2r_publish(void)
     s2r_mailbox.resumes = 0;
     dc_cvac_range(&s2r_mailbox, sizeof(s2r_mailbox));
     sysop("dsb sy");
+    pmu_s2r_probe(0xb0); /* TEST: baseline before Linux, 0x8318 only. */
     return (u64)&s2r_mailbox;
 }
 
@@ -550,6 +551,7 @@ bool smp_s2r_published(void)
  */
 void smp_s2r_return_to_os(void)
 {
+    pmu_s2r_probe(0xb4);
     u64 entry = s2r_mailbox.resume_pa;
 
     /* exception_initialize() unmasked everything. */
@@ -572,6 +574,7 @@ void smp_s2r_return_to_os(void)
     s2r_mailbox.resumes++;
     sysop("dsb sy");
 
+    pmu_s2r_probe(0xb5);
     ((void (*)(void))entry)();
     reboot();
 }

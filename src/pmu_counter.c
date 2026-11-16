@@ -128,3 +128,36 @@ void pmu_s2r_mark(u8 val)
     spmi_ext_write_long(spmi, addr, 0x830e, &val, 1);
     spmi_shutdown(spmi);
 }
+
+/*
+ * TEST ONLY, J813: the early wake path cannot allocate, parse the ADT, print, or depend
+ * on timer initialization. The known nub-spmi0 gen-4 controller and primary PMU
+ * (SID 0xe) answer before Linux and are always on. Keep the old 0x8308..0x8317 notes;
+ * this probe owns only 0x8318. The caller is the boot core.
+ *
+ * A busy FIFO skips the mark; a missing reply is bounded to 4096 MMIO reads. A mark
+ * missing after a wake is therefore inconclusive, but a changed byte proves the
+ * corresponding entry was reached. Do not reset/drain the controller or its IRQs.
+ */
+void pmu_s2r_probe(u8 val)
+{
+    const uintptr_t base = 0x388714000;
+    const u32 empty = BIT(30) | BIT(14);
+    const u32 command = 0x83188e30;
+    unsigned int i;
+
+    if (chip_id != T8142 || (read32(base + 0x200) & empty) != empty)
+        return;
+
+    /* EXT_WRITEL, one byte: address 0x8318, active, SID 0xe, opcode 0x30. */
+    write32(base + 0x210, command);
+    write32(base + 0x210, val);
+    sysop("dsb sy");
+    for (i = 0; i < 4096; i++) {
+        if (!(read32(base + 0x200) & BIT(30))) {
+            /* One write has exactly one reply. Leave any later traffic untouched. */
+            (void)read32(base + 0x220);
+            return;
+        }
+    }
+}

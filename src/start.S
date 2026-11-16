@@ -2,6 +2,7 @@
 
 #include "../build/build_cfg.h"
 #include "chainload.h"
+#include "midr.h"
 #include "smp_asm.h"
 #include "soc.h"
 
@@ -350,6 +351,54 @@ exc_unk:
 .globl cpu_reset
 .type cpu_reset, @function
 cpu_reset:
+    /*
+     * TEST ONLY, J813: mark boot-core reset entry before any resident data or
+     * stack access. MIDR identifies T8142 without loading chip_id; MPIDR selects
+     * P0 (cpu6), so no secondary startup touches SPMI. Ordinary boot uses _start.
+     * x0..x2 have no incoming reset contract and are replaced below; keep x9.
+     * Like pmu_s2r_probe(), skip a busy FIFO, bound the reply poll, and preserve
+     * every old scratch note except the dedicated stage byte at 0x8318.
+     */
+    mrs x0, MIDR_EL1
+    ubfx x1, x0, #24, #8
+    cmp x1, #MIDR_IMPL_APPLE
+    b.ne .Ls2r_probe_done
+    ubfx x1, x0, #4, #12
+    cmp x1, #MIDR_PART_T8142_HIDRA_PCORE
+    b.ne .Ls2r_probe_done
+    mrs x0, MPIDR_EL1
+    and x0, x0, #0xffffff
+    mov x1, #0x100
+    movk x1, #1, lsl #16
+    cmp x0, x1
+    b.ne .Ls2r_probe_done
+
+    mov x0, #0x4000
+    movk x0, #0x8871, lsl #16
+    movk x0, #3, lsl #32         /* nub-spmi0: 0x388714000 */
+    ldr w1, [x0, #0x200]
+    mov w2, #0x4000
+    movk w2, #0x4000, lsl #16  /* TX and RX FIFOs empty */
+    and w1, w1, w2
+    cmp w1, w2
+    b.ne .Ls2r_probe_done
+
+    mov w1, #0x8e30
+    movk w1, #0x8318, lsl #16  /* EXT_WRITEL, SID e, one byte at 0x8318 */
+    str w1, [x0, #0x210]
+    mov w1, #0xb6
+    str w1, [x0, #0x210]
+    dsb sy
+    mov w2, #4096
+.Ls2r_probe_wait:
+    ldr w1, [x0, #0x200]
+    tbz w1, #30, .Ls2r_probe_reply
+    subs w2, w2, #1
+    b.ne .Ls2r_probe_wait
+    b .Ls2r_probe_done
+.Ls2r_probe_reply:
+    ldr w1, [x0, #0x220]       /* consume this write's one reply */
+.Ls2r_probe_done:
     mov w0, 'O'
     bl debug_putc
 

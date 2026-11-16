@@ -9,6 +9,7 @@
 #include "exception.h"
 #include "firmware.h"
 #include "midr.h"
+#include "pmu_counter.h"
 #include "smp.h"
 #include "sptm_virt.h"
 #include "string.h"
@@ -256,6 +257,10 @@ void _start_c(void *boot_args, void *base)
 /* Secondary SMP core boot */
 void _cpu_reset_c(void *stack)
 {
+    bool s2r_probe = chip_id == T8142 && is_boot_cpu() && smp_s2r_published();
+
+    if (s2r_probe)
+        pmu_s2r_probe(0xb1);
     if (chip_id == T8152 && !is_boot_cpu()) {
         if (smp_secondary_prepare() < 0)
             while (1)
@@ -292,10 +297,14 @@ void _cpu_reset_c(void *stack)
         printf("  MPIDR: 0x%lx\n", mrs(MPIDR_EL1));
     }
     init_cpu();
+    if (s2r_probe)
+        pmu_s2r_probe(0xb2);
     if (!quiet)
         printf("  Running in EL%lu\n\n", mrs(CurrentEL) >> 2);
 
     exception_initialize();
+    if (s2r_probe)
+        pmu_s2r_probe(0xb3);
 
     if (in_el3()) {
         smp_secondary_prep_el3();
