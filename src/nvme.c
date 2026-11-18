@@ -438,12 +438,13 @@ bool nvme_post_m4(void)
 
 /*
  * T6040/T6041 (M4 Pro/Max): a cold start of ANS after the generic power-off gets no RTKit HELLO
- * (ASC CPU running, pmgr domains on), and an RTKit quiesce times out. Keep ANS live between
- * stages and adopt it in the next stage, as T6050 does.
+ * (ASC CPU running, pmgr domains on), and an RTKit quiesce times out. T8132 (M4): the same start
+ * gets no HELLO now and then, after a warm reboot. Keep ANS live between stages and adopt it in
+ * the next stage, as T6050 does.
  */
 static bool nvme_post_m4_keeps_live(void)
 {
-    return chip_id == T6040 || chip_id == T6041;
+    return chip_id == T6040 || chip_id == T6041 || chip_id == T8132;
 }
 
 static bool nvme_post_m4_hands_on_live(void)
