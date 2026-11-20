@@ -533,7 +533,6 @@ u64 smp_s2r_publish(void)
     s2r_mailbox.resumes = 0;
     dc_cvac_range(&s2r_mailbox, sizeof(s2r_mailbox));
     sysop("dsb sy");
-    pmu_s2r_probe(0xb0); /* TEST: baseline before Linux, 0x8318 only. */
     return (u64)&s2r_mailbox;
 }
 
