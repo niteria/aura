@@ -359,6 +359,10 @@ cpu_reset:
      * Like pmu_s2r_probe(), skip a busy FIFO, bound the reply poll, and preserve
      * every old scratch note except the dedicated stage byte at 0x8318.
      */
+    /* TEST: the boot core (P0, MPIDR 0x10100) marks its reset entry, 0xb6 at 0x8318. Only
+     * it: on a cold boot it enters through _start, so this fires only on a wake, while every
+     * secondary comes through here at each boot. Wait a bounded time for an idle FIFO, then
+     * write anyway. x0..x4 are free here (x3/x4 reloaded below). */
     mrs x0, MIDR_EL1
     ubfx x1, x0, #24, #8
     cmp x1, #MIDR_IMPL_APPLE
@@ -372,22 +376,25 @@ cpu_reset:
     movk x1, #1, lsl #16
     cmp x0, x1
     b.ne .Ls2r_probe_done
-
+    mov w3, #0xb6
     mov x0, #0x4000
     movk x0, #0x8871, lsl #16
     movk x0, #3, lsl #32         /* nub-spmi0: 0x388714000 */
+    mov w4, #0x4000
+    movk w4, #0x4000, lsl #16    /* TX and RX FIFOs empty */
+    mov w2, #4096
+.Ls2r_probe_idle:
     ldr w1, [x0, #0x200]
-    mov w2, #0x4000
-    movk w2, #0x4000, lsl #16  /* TX and RX FIFOs empty */
-    and w1, w1, w2
-    cmp w1, w2
-    b.ne .Ls2r_probe_done
-
+    and w1, w1, w4
+    cmp w1, w4
+    b.eq .Ls2r_probe_send
+    subs w2, w2, #1
+    b.ne .Ls2r_probe_idle
+.Ls2r_probe_send:
     mov w1, #0x8e30
     movk w1, #0x8318, lsl #16  /* EXT_WRITEL, SID e, one byte at 0x8318 */
     str w1, [x0, #0x210]
-    mov w1, #0xb6
-    str w1, [x0, #0x210]
+    str w3, [x0, #0x210]
     dsb sy
     mov w2, #4096
 .Ls2r_probe_wait:
