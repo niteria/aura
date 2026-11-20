@@ -135,6 +135,20 @@ const struct midr_part_features features_m4 = {
     .unsafe_wfi = true,
 };
 
+/*
+ * TEST ONLY, J813 S2R: M5 as before edd771fe, iBoot's SIQ_CFG kept (AIC IRQs on the boot core
+ * only), the routing the T8142 sleep driver was validated with.
+ */
+static const struct midr_part_features features_m5_test = {
+    .sleep_mode = SLEEP_NONE,
+#ifdef SPTM_VIRT
+    .mmu_sprr = true,
+#endif
+    .fast_ipi = true,
+    .actlr_el2 = true,
+    .unsafe_wfi = true,
+};
+
 /* M4 Pro/Max: as M4, AIC IRQs on every core (route 0, see above). */
 const struct midr_part_features features_m4_pro = {
     .sleep_mode = SLEEP_NONE,
@@ -203,8 +217,8 @@ const struct midr_part_info midr_parts[] = {
     {MIDR_PART_T6041_BRAVA_PCORE, "M4 Max Brava (P core)", NULL, &features_m4_pro},
     {MIDR_PART_T8140_TAHITI_ECORE, "A18 Pro Tahiti (E core)", NULL, &features_m4},
     {MIDR_PART_T8140_TAHITI_PCORE, "A18 Pro Tahiti (P core)", NULL, &features_m4},
-    {MIDR_PART_T8142_HIDRA_ECORE, "M5 Hidra (E core)", NULL, &features_m4},
-    {MIDR_PART_T8142_HIDRA_PCORE, "M5 Hidra (P core)", NULL, &features_m4},
+    {MIDR_PART_T8142_HIDRA_ECORE, "M5 Hidra (E core)", NULL, &features_m5_test},
+    {MIDR_PART_T8142_HIDRA_PCORE, "M5 Hidra (P core)", NULL, &features_m5_test},
     {MIDR_PART_T6050_SOTRA_MCORE, "M5 Pro Sotra (M core)", NULL, &features_m5_sotra},
     {MIDR_PART_T6050_SOTRA_PCORE, "M5 Pro Sotra (P core)", NULL, &features_m5_sotra},
     {MIDR_PART_T6051_SOTRAC_MCORE, "M5 Max Sotra C (M core)", NULL, &features_m5_sotra},
