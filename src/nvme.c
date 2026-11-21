@@ -450,7 +450,7 @@ bool nvme_post_m4(void)
 /* ANS is powered through its own storage gates (pcie_ans_power_off()), not the APCIe block. */
 static bool nvme_ans_storage_gated(void)
 {
-    return chip_id == T6050 || chip_id == T8142;
+    return chip_id == T6050; /* TEST ONLY: T8142 as before #250 */
 }
 
 /* An adopted session has no RTKit instance of this stage's until it is powered off or quiesced. */
